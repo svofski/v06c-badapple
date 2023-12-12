@@ -8,7 +8,7 @@
         .project bap.rom
         .org $100
 
-PLAYER_BASE equ $2000
+;PLAYER_BASE equ $2000
 player_init equ PLAYER_BASE+0
 player_tick equ PLAYER_BASE+3
 songe       equ PLAYER_BASE+6
