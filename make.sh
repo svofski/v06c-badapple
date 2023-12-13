@@ -2,16 +2,18 @@
 set -e
 
 PASM=../prettyasm/main.js
+FDDUTIL=../fddutil/fddutil.js
 BIN2WAV=../bin2wav/bin2wav.js
 ZX0=./tools/zx0.exe
 PNG2DB=./tools/png2db-arzak.py
 BADAPPY=./tools/badap.py
 
 ZX0_ORG=4000
-PLAYER_ORG=2000
+PLAYER_ORG=3000
 
 RSOUND="-DRSOUND=0"
 PLAYER="-DPLAYER_BASE=\$$PLAYER_ORG"
+LOADER="-DWITH_LOADER=1"
 
 MAIN=bapz
 ROM=$MAIN-raw.rom
@@ -22,12 +24,14 @@ DZX0_BIN=dzx0-fwd.$ZX0_ORG
 RELOC=reloc-zx0
 RELOC_BIN=$RELOC.0100
 EDD=badap.edd
+WLZ=badap.wlz
+WITHPLAYER=y$ROM
 
 rm -f $ROM_ZX0 $ROM
 
 
 #$PASM $RSOUND $MAIN.asm -o $ROM
-$PASM $PLAYER $MAIN.asm -o $ROM
+$PASM $LOADER $PLAYER $MAIN.asm -o $ROM
 
 ROM_SZ=`cat $ROM | wc -c`
 echo "$ROM: $ROM_SZ octets"
@@ -52,8 +56,20 @@ cd ..
 # if we had a kvaz remainder like for 25fps, but not now
 #cat $ROM badap.rem >y$ROM
 
-cat $ROM muzon/player.bin badap.rem >y$ROM
-ls -l y$ROM
+cat $ROM muzon/player.bin badap.rem >$WITHPLAYER
+ls -l $WITHPLAYER
+
+# loader
+#$PASM loader.asm -o loader.com
+cp $WITHPLAYER badap.com
+
+cat <<TOHERE >initial.sub
+BADAP
+
+TOHERE
+
+# fdd
+$FDDUTIL -r ryba.fdd -i badap.com -i badap.wlz -i initial.sub -o badap.fdd
 
 #$ZX0 -c $ROM $ROM_ZX0
 #ROM_ZX0_SZ=`cat $ROM_ZX0 | wc -c`

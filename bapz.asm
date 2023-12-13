@@ -26,6 +26,9 @@ SONGE_FIRST_FRAME equ 19
 
 FIRSTCOL_B  equ $c0
 
+#ifdef WITH_LOADER
+        call loader_main
+#endif
         di
         xra a
         out $10
@@ -70,18 +73,6 @@ copyvsync:
         ; init muzon
         lhld songe
         call player_init
-
-
-;dzx0_finish_ctr db 0
-;burakhi_sp      dw 0
-;burakhi_page    db 0
-;frame_copy_cnt      dw 0
-;unpacked_frame_ptr  dw 0
-;intcount  db 0
-;screen_sel db 0
-;tilemap_ptr dw 0
-;bitmaps_ptr dw 0
-;tile_i      db 0
 
         ei
         hlt
@@ -897,9 +888,13 @@ prefetch_buf  ds 256
 packed_data_begin:
         ds 256
 
-        .org $1fff
+         
+#ifdef WITH_LOADER
+        .include loader.asm
+#endif
+
+        .org PLAYER_BASE-1
         db 0
         ; remainder of the stream that didn't fit in burakhi (append badap.rem)
 disk_remainder:
-         
 

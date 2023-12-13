@@ -135,9 +135,6 @@ def make_megastream_from_zip():
 
     print(f'created megastream.bin: {getsize("megastream.bin")} bytes')
 
-make_megastream_from_zip()
-exit(0)
-
 def make_megastream():
     megastream=[]
     
@@ -644,15 +641,21 @@ def kvazify():
     with open('megastream.wloomz', 'rb') as ff:
         fwd = bytes(ff.read())
 
+    # wlz is for loading from disk
+    with open('badap.wlz', 'wb') as wlz:
+        rev = list(fwd[:256*1024])
+        wlz.write(bytes(rev))
+
+    # edd is the same but padded to 256K with zeros for emulator compatibility
     with open('badap.edd', 'wb') as edd:
         rev = list(fwd[:256*1024])
         if len(rev) < 256*1024:
             rev = rev + [0] * (256*1024 - len(rev))
-        #rev.reverse()
         edd.write(bytes(rev))
+
+    # this is only for 25fps version, remainder to be put in the main ram
     with open('badap.rem', 'wb') as fuu:
         rev = list(fwd[256*1024:])
-        #rev.reverse()
         fuu.write(bytes(rev))
 
 
