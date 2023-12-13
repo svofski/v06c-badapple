@@ -62,6 +62,8 @@ from os.path import getsize
 import numpy as np
 from utils import *
 from time import sleep
+from zipfile import ZipFile
+from io import BytesIO
 
 from random import random, shuffle
 
@@ -102,6 +104,39 @@ row_bytes = FRAME_W // 8
 tilemap_size = max(1, row_bytes // 8) * FRAME_H // TILE_H
 
 print(f'INTERLACE={INTERLACE} FRAME_W={FRAME_W} FRAME_H={FRAME_H} tilemap_size={tilemap_size}')
+
+def make_megastream_from_zip():
+    megastream=[]
+    
+    i = 0
+    
+    frame_h = FRAME_H
+    if INTERLACE:
+        frame_h *= 2 # double fields for interlace
+
+    with ZipFile(srcpath + '/frames.zip') as zipf:
+        for fname in zipf.namelist():
+            bmp = zipf.read(fname)
+            bmpbytes = BytesIO()
+            bmpbytes.write(bmp)
+            src = Image.open(bmpbytes)
+            img = src.resize([FRAME_W, frame_h])
+            data = list(img.getdata()) 
+            megastream += list(bytestream(data))
+            i += 1
+            if i % 10 == 0:
+                print(fname, end='\r')
+    
+    
+    b = bytes(megastream)
+    out = open('megastream.bin', 'wb')
+    out.write(b)
+    out.close()
+
+    print(f'created megastream.bin: {getsize("megastream.bin")} bytes')
+
+make_megastream_from_zip()
+exit(0)
 
 def make_megastream():
     megastream=[]
@@ -637,7 +672,7 @@ try:
     sz = getsize('megastream.bin')
 except:
     print(f'could not stat megastream.bin, creating new')
-    make_megastream()
+    make_megastream_from_zip()
 
 make_twitch()
 #play_tw0()
