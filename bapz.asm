@@ -380,6 +380,7 @@ dzx0_yield:
         ora a
 
         jnz movie_ended
+        ;jmp movie_ended
 
         lxi b, unpack_buf           ; bc has 256 unpacked bytes
 
@@ -494,8 +495,9 @@ not_starting_songe:
 
         ; no more frames --> pass on to the next stage in the show
 movie_ended:
-        di
-        hlt
+        jmp endtitles
+        ;di
+        ;hlt
 
 wait_vsync_and_flip:
         lxi h, intcount
@@ -893,8 +895,70 @@ packed_data_begin:
         .include loader.asm
 #endif
 
+        .include font8x8.asm
+endtitles:
+        xra a
+        sta songe_enabled     ; stfu
+        ;inr a
+        sta screen_sel        ; screen $c0
+        call set_screen
+        ei \ hlt
+
+        
+        lxi h, $0bd0
+        call gotoxy
+        lxi h, msg_credits_m0
+        call puts
+
+        lxi h, $05b0
+        call gotoxy
+        lxi h, msg_credits_m1
+        call puts
+      
+
+        lxi h, $0b90
+        call gotoxy
+        lxi h, msg_credits0
+        call puts
+        lxi h, $0d80
+        call gotoxy
+        lxi h, msg_credits3 ; svofski
+        call puts
+        lxi h, $0e10
+        call gotoxy
+        lxi h, msg_credits4 ; 2023
+        call puts
+
+
+
+        lxi h, $0240
+        call gotoxy
+        lxi h, msg_credits1
+        call puts
+
+        lxi h, $0930
+        call gotoxy
+        lxi h, msg_credits2
+        call puts
+
+        di \ hlt
+
+msg_credits_m0:
+        db 'BAD APPLE', 0
+msg_credits_m1:
+        db 'VECTOR-06C / KVAZ / 8253', 0
+msg_credits0:
+        db 'CODE/MUSIC',0
+msg_credits1:
+        db 'VI53 PLAYER O/ DENIS GRACHEV',0
+msg_credits2:
+        db 'IVAGOR \O DZX0', 0
+msg_credits3:
+        db 'SVOFSKI', 0
+msg_credits4:
+        db '2023', 0
+
         .org PLAYER_BASE-1
         db 0
         ; remainder of the stream that didn't fit in burakhi (append badap.rem)
 disk_remainder:
-

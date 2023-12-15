@@ -1,4 +1,4 @@
-bdos    equ 5
+BDOS    equ 5
 fcb1    equ $5c
 intv    equ 38h
 dma     equ $80
@@ -15,18 +15,18 @@ F_READ          equ 20          ; read next record
 #endif
 
 msg_gamarjoba:
-        db 'Bad Apple for Vector-06c with VI53 sound', $0d, $0a
+        db 'Bad Apple for Vector-06c / VI53 / Kvaz', $0d, $0a
         db 'svofski 2023', 0dh, 0ah, '$', 26
 msg_filenotfound:
         db 'Could not open BADAP.WLZ', 0dh, 0ah, '$'
 msg_wtf:
         db 'Error reading BADAP.WLZ', 0dh, 0ah, '$'
 msg_loading:
-        db 'Loading $'
+        db 'Filling up quasispace $'
 msg_read_done:
         db 'Playing...', 0dh, 0ah, '$'
 spinner:
-        db '|/-\\'
+        db '||||////----\\\\\\\\'
 spinner_i:
         db 0
 spinner_template:
@@ -34,13 +34,10 @@ spinner_template:
 badap_name:
         db 'BADAP   WLZ', 0
 
-;kvaz_page db 0
-;kvaz_sp   dw 0
-
 loader_main:
         lxi d, msg_gamarjoba
         mvi c, C_WRITESTR
-        call bdos
+        call BDOS
         
 copy_name:
         lxi b, badap_name
@@ -54,14 +51,14 @@ cn_L1:  ldax b
 fcb_ready:
         mvi c, F_OPEN
         lxi de, fcb1
-        call bdos
+        call BDOS
         inr a
         jz notfound_error
 
         ; Loading...
         lxi d, msg_loading
         mvi c, C_WRITESTR
-        call bdos
+        call BDOS
 
         call ckvaz_init
 
@@ -81,7 +78,8 @@ read_ok:
         lxi h, spinner_i
         mov a, m
         inr m
-        ani $3
+        rar \ rar
+        ani $f    ; 16 animation frames
         mov e, a
         mvi d, 0
         lxi h, spinner
@@ -91,7 +89,7 @@ read_ok:
 
         mvi c, C_WRITESTR
         lxi d, spinner_template
-        call bdos
+        call BDOS
 
         ; copy these bytes to kvaz
         call ckvaz
@@ -111,7 +109,7 @@ notfound_error:
         lxi d, msg_filenotfound
 error_exit:        
         mvi c, 9
-        jmp bdos
+        jmp BDOS
 
 ckvaz_init:
         lxi h, 0
@@ -120,7 +118,7 @@ ckvaz_init:
         sta kvaz_page
         ret
 
-        ; copy CP/M dma area to kvaz and advance kvaz position
+        ; copy CP/M DMA area to kvaz, advance kvaz position
 ckvaz:
         di
         lxi h, 0
