@@ -497,8 +497,6 @@ not_starting_songe:
         ; no more frames --> pass on to the next stage in the show
 movie_ended:
         jmp endtitles
-        ;di
-        ;hlt
 
 wait_vsync_and_flip:
         lxi h, intcount
@@ -910,49 +908,67 @@ endtitles:
         xra a
         call setbuf
         
+        ; bad apple
         lxi d, $0bd0
         lxi h, msg_credits_m0
         call puts_hl_at_de
+        lxi h, $c0d0
+        call half_char_adjust
+        call slide_text
 
+        ; vector-06c / kvaz..
         lxi d, $05b0
         lxi h, msg_credits_m1
         call puts_hl_at_de
-      
+        call slide_text
 
-        lxi d, $0b90
+        ; code/music
+        lxi d, $0b80
         lxi h, msg_credits0
         call puts_hl_at_de
-        lxi d, $0d80
-        lxi h, msg_credits3 ; svofski
+        call slide_text
+
+        ; svofski
+        lxi d, $0c70
+        lxi h, msg_credits3
         call puts_hl_at_de
+
+        lxi h, $c070
+        call half_char_adjust
+
+        call slide_text
+
+
         lxi d, $0e10
         lxi h, msg_credits4 ; 2023
         call puts_hl_at_de
+
+        call slide_text
 
         lxi d, $0240
         lxi h, msg_credits1
         call puts_hl_at_de
 
+        call slide_text
+
         lxi d, $0930
         lxi h, msg_credits2
         call puts_hl_at_de
 
-        ; save line shift counts in prefetch_buf to packed_data_begin
-        lxi h, prefetch_buf
-        lxi d, packed_data_begin
-        call copybuf
+        call slide_text
 
-        mvi a, 1
-        sta screen_sel        ; screen $c0
-        call set_screen
-        ei \ hlt
+        ; so that everything surely moves in 
+        call slide_text
+        call slide_text
+        call slide_text
+        call slide_text
 
 
         ; slide the title screen in
         call slide_text
 
-        ; wait a couple secs
-        mvi a, 100
+        ; wait for sex
+        mvi a, 200
         ei \ hlt
         dcr a
         jnz $-3
@@ -967,6 +983,18 @@ endtitles:
         ; * * * 
         di \ hlt
 
+        ; offset a line by 1/2 char pos for nice centering
+half_char_adjust:
+        mvi c, 7
+centre_loop:
+        call slide_line  
+        call slide_line
+        call slide_line
+        call slide_line
+        dcr l
+        dcr c
+        jnz centre_loop
+        ret
 
 slide_text:
         lxi h, $ffff
@@ -984,12 +1012,26 @@ slide_l0:
 
         mov a, m
         dcr a
+        jm slide_l1   ; already 0, skip this line
+        mov m, a      ; save count and shift it
+
+        mvi h, $c0
+        call bslide_line
+slide_l1:
+        lda rnd16+1
+        mov l, a      ; line number
+
+        ; update counter for this line, don't go lower than 0
+        mvi h, prefetch_buf >> 8
+
+        mov a, m
+        dcr a
         jm slide_l0   ; already 0, skip this line
         mov m, a      ; save count and shift it
 
         mvi h, $c0
-slide_l1:
         call bslide_line
+        
         mvi c, 0
         jmp slide_l0
 
@@ -1014,10 +1056,12 @@ puts_hl_at_de:
         call gotoxy
 
         ; mark used lines as shiftable in shift counters
-        mvi h, prefetch_buf >> 8
         mvi c, 8
         mvi a, 32
 phad_l1:
+        mvi h, prefetch_buf >> 8
+        mov m, a
+        mvi h, packed_data_begin >> 8
         mov m, a
         dcr l
         dcr c
@@ -1059,6 +1103,7 @@ rnd16:
 ;
         ; hl src
 slide_line:
+        push h
         xra a
 
 sl_l1:
@@ -1095,6 +1140,7 @@ sl_l1:
         mov m, a
         inr h
         jnz sl_l1
+        pop h
         ret
 
 
