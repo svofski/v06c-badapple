@@ -29,6 +29,7 @@ FIRSTCOL_B  equ $c0
 #ifdef WITH_LOADER
         call loader_main
 #endif
+restart_vec:
         di
         xra a
         out $10
@@ -36,7 +37,7 @@ FIRSTCOL_B  equ $c0
 
         mvi a, $c3
         sta 0
-        lxi h, $100
+        lxi h, restart_vec
         shld 1
 
         lxi h, vsync
@@ -899,49 +900,204 @@ packed_data_begin:
 endtitles:
         xra a
         sta songe_enabled     ; stfu
-        ;inr a
+        inr a
         sta screen_sel        ; screen $c0
         call set_screen
         ei \ hlt
 
+        ; use prefetch_buf for line shift counters
+        lxi h, prefetch_buf
+        xra a
+        call setbuf
         
-        lxi h, $0bd0
-        call gotoxy
+        lxi d, $0bd0
         lxi h, msg_credits_m0
-        call puts
+        call puts_hl_at_de
 
-        lxi h, $05b0
-        call gotoxy
+        lxi d, $05b0
         lxi h, msg_credits_m1
-        call puts
+        call puts_hl_at_de
       
 
-        lxi h, $0b90
-        call gotoxy
+        lxi d, $0b90
         lxi h, msg_credits0
-        call puts
-        lxi h, $0d80
-        call gotoxy
+        call puts_hl_at_de
+        lxi d, $0d80
         lxi h, msg_credits3 ; svofski
-        call puts
-        lxi h, $0e10
-        call gotoxy
+        call puts_hl_at_de
+        lxi d, $0e10
         lxi h, msg_credits4 ; 2023
-        call puts
+        call puts_hl_at_de
 
-
-
-        lxi h, $0240
-        call gotoxy
+        lxi d, $0240
         lxi h, msg_credits1
-        call puts
+        call puts_hl_at_de
 
-        lxi h, $0930
-        call gotoxy
+        lxi d, $0930
         lxi h, msg_credits2
-        call puts
+        call puts_hl_at_de
 
+        ; save line shift counts in prefetch_buf to packed_data_begin
+        lxi h, prefetch_buf
+        lxi d, packed_data_begin
+        call copybuf
+
+        mvi a, 1
+        sta screen_sel        ; screen $c0
+        call set_screen
+        ei \ hlt
+
+
+        ; slide the title screen in
+        call slide_text
+
+        ; wait a couple secs
+        mvi a, 100
+        ei \ hlt
+        dcr a
+        jnz $-3
+
+        ; and shift again, now away from the screen forever
+        lxi h, packed_data_begin
+        lxi d, prefetch_buf
+        call copybuf
+
+        call slide_text
+
+        ; * * * 
         di \ hlt
+
+
+slide_text:
+        lxi h, $ffff
+        shld rnd16+1
+        mvi c, 0
+slide_l0:       
+        dcr c
+        rz
+        call rnd16
+        lda rnd16+2
+        mov l, a      ; line number
+
+        ; update counter for this line, don't go lower than 0
+        mvi h, prefetch_buf >> 8
+
+        mov a, m
+        dcr a
+        jm slide_l0   ; already 0, skip this line
+        mov m, a      ; save count and shift it
+
+        mvi h, $c0
+slide_l1:
+        call bslide_line
+        mvi c, 0
+        jmp slide_l0
+
+
+
+setbuf: ; a -> hl x256
+        mov m, a 
+        inr l
+        jnz setbuf
+        ret
+        
+copybuf:; hl -> de x256
+        mov a, m
+        stax d
+        inr l
+        inr e
+        jnz copybuf
+        ret
+
+puts_hl_at_de:
+        xchg
+        call gotoxy
+
+        ; mark used lines as shiftable in shift counters
+        mvi h, prefetch_buf >> 8
+        mvi c, 8
+        mvi a, 32
+phad_l1:
+        mov m, a
+        dcr l
+        dcr c
+        jnz phad_l1
+        xchg
+        jmp puts
+
+bslide_line:
+        xra a
+bsl_l1:
+        mov b, m
+        mov m, a
+        mov a, b
+        inr h
+        mov b, m
+        mov m, a
+        mov a, b
+        inr h
+        jnz bsl_l1
+        ret
+
+    ; выход:
+    ; HL - число от 1 до 65535
+rnd16:
+        lxi h,65535
+        dad h
+        shld rnd16+1
+        rnc
+        mvi a,00000001b ;перевернул 80h - 10000000b
+        xra l
+        mov l,a
+        mvi a,01101000b ;перевернул 16h - 00010110b
+        xra h
+        mov h,a
+        shld rnd16+1
+        ret
+
+
+;
+        ; hl src
+slide_line:
+        xra a
+
+sl_l1:
+        mov a, m
+        rar
+        mov m, a
+        inr h
+        mov a, m
+        rar
+        mov m, a
+        inr h
+        mov a, m
+        rar
+        mov m, a
+        inr h
+        mov a, m
+        rar
+        mov m, a
+        inr h
+        mov a, m
+        rar
+        mov m, a
+        inr h
+        mov a, m
+        rar
+        mov m, a
+        inr h
+        mov a, m
+        rar
+        mov m, a
+        inr h
+        mov a, m
+        rar
+        mov m, a
+        inr h
+        jnz sl_l1
+        ret
+
+
 
 msg_credits_m0:
         db 'BAD APPLE', 0
